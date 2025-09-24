@@ -1,0 +1,100 @@
+/*
+YouTube Music–style web player with YouTube Data API v3 integration
+- Now uses a search bar to query YouTube Music (via YouTube Data API)
+- Displays results (title, channel, thumbnail)
+- Plays preview audio (if available via streaming URL)
+- TailwindCSS for styling
+
+⚠️ Note: The YouTube Data API does not give direct playable audio streams (ToS restriction). 
+To stream audio legally, you must use YouTube’s official embedded player (iframe) or a licensed backend service. 
+Below, we simulate playback by embedding the YouTube iframe when a user selects a track.
+
+Steps:
+1. Create a Google Cloud project → enable YouTube Data API v3 → get API key.
+2. Set REACT_APP_YT_API_KEY in your environment.
+3. Replace fetch URL with `https://www.googleapis.com/youtube/v3/search` endpoint.
+*/
+
+import React, { useEffect, useRef, useState } from "react";
+
+export default function YouTubeStylePlayer() {
+  const apiKey = process.env.REACT_APP_YT_API_KEY;
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [currentVideoId, setCurrentVideoId] = useState(null);
+
+  async function searchYouTube(e) {
+    e.preventDefault();
+    if (!query) return;
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(
+          query
+        )}&key=${apiKey}`
+      );
+      const data = await res.json();
+      setResults(data.items || []);
+    } catch (err) {
+      console.error("YouTube API error", err);
+    }
+  }
+
+  return (
+    <div className="w-full max-w-4xl mx-auto p-4">
+      <div className="bg-white/5 rounded-2xl shadow-lg overflow-hidden border border-gray-800 p-4">
+        {/* Search bar */}
+        <form onSubmit={searchYouTube} className="flex gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="Search YouTube Music..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="flex-1 px-3 py-2 rounded bg-white/10 text-white"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-purple-600 rounded text-white font-semibold"
+          >
+            Search
+          </button>
+        </form>
+
+        {/* Search results */}
+        <div className="space-y-3 max-h-80 overflow-auto">
+          {results.map((item) => (
+            <div
+              key={item.id.videoId}
+              className="flex items-center gap-3 p-2 rounded hover:bg-white/10 cursor-pointer"
+              onClick={() => setCurrentVideoId(item.id.videoId)}
+            >
+              <img
+                src={item.snippet.thumbnails.default.url}
+                alt="thumbnail"
+                className="w-16 h-16 rounded"
+              />
+              <div>
+                <div className="font-medium">{item.snippet.title}</div>
+                <div className="text-sm text-gray-400">{item.snippet.channelTitle}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Player */}
+        {currentVideoId && (
+          <div className="mt-4 aspect-video">
+            <iframe
+              title="YouTube Player"
+              width="100%"
+              height="100%"
+              src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1`}
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              className="rounded"
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
